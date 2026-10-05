@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.5.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.6.0
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -53,6 +53,7 @@ services:
 
       # Renames the app in the sidebar, login card, and page titles.
       APP_NAME: ${APP_NAME:-}
+      ACCENT_COLOR: ${ACCENT_COLOR:-}
 
       # Seeds the managed dashboard host once, at the end of setup (default: BASE_URL's hostname);
       # after that the stored setting wins. Caddy reads it for its placeholder site.
@@ -166,6 +167,7 @@ services:
       NOTIFY_GEOIP_FAILED: ${NOTIFY_GEOIP_FAILED:-true}
       NOTIFY_CRS_PLUGIN_DISABLED: ${NOTIFY_CRS_PLUGIN_DISABLED:-true}
       NOTIFY_UPDATE_AVAILABLE: ${NOTIFY_UPDATE_AVAILABLE:-true}
+      NOTIFY_DISABLED_ACCOUNT_OWNER: ${NOTIFY_DISABLED_ACCOUNT_OWNER:-false}
 
       # First-start defaults of Settings fields.
       FORWARD_AUTH_INTERNAL_URL: ${FORWARD_AUTH_INTERNAL_URL:-}
@@ -208,7 +210,7 @@ services:
   caddy:
     container_name: caddy-proxy-manager-caddy
     # An image you build yourself, with the agent's CADDY_BUILD_MODE=external. See the README.
-    image: ${CADDY_IMAGE:-ghcr.io/silentspud/caddy-proxy-manager/caddy:3.5.1}
+    image: ${CADDY_IMAGE:-ghcr.io/silentspud/caddy-proxy-manager/caddy:3.6.0}
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -255,6 +257,8 @@ services:
       caddy-admin:
         aliases:
           - caddy-admin
+      # The bouncer's way to the managed crowdsec; see there.
+      crowdsec: {}
     healthcheck:
       # The bound name: the admin API does not listen on loopback.
       test: ["CMD", "wget", "--quiet", "--tries=1", "-O", "/dev/null", "http://caddy-admin:2019/config/"]
@@ -298,7 +302,7 @@ services:
 
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.5.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.6.0
     # It allows stopping Caddy 40s on exit; Docker's default 10s would kill it part-way.
     stop_grace_period: 1m
     build:
@@ -394,7 +398,7 @@ services:
     container_name: caddy-proxy-manager-clickhouse
     image: clickhouse/clickhouse-server:26.9.8.3-alpine@sha256:7370147ab29301f9aad4b4424297d0c423c68efc4ece9d5150e9afa1a4d1afbe
     profiles: [clickhouse]
-    restart: always
+    restart: unless-stopped
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-cpm}
@@ -421,6 +425,40 @@ services:
         soft: 262144
         hard: 262144
 
+  # Settings -> CrowdSec in managed mode: the agent passes `--profile crowdsec` and the bouncer key
+  # the controller generated. For the bundled agent's host only.
+  crowdsec:
+    container_name: caddy-proxy-manager-crowdsec
+    image: crowdsecurity/crowdsec:v1.8.1@sha256:0f2523fa61ef507f15d953045cface490cc880670c62f2755ced17524107f71a
+    profiles: [crowdsec]
+    restart: unless-stopped
+    environment:
+      # AppSec's too, always: acquis.yaml listens for it, so switching it on needs no recreate.
+      COLLECTIONS: crowdsecurity/caddy crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules
+      # Not `:?`, for the same reason as CLICKHOUSE_PASSWORD. Registered once, on the first start.
+      BOUNCER_KEY_caddy: ${CROWDSEC_BOUNCER_KEY:-}
+      # Off unless Settings shares signals: the online API sends CrowdSec every attacker address.
+      DISABLE_ONLINE_API: ${CROWDSEC_DISABLE_ONLINE_API:-true}
+    volumes:
+      - crowdsec-data:/var/lib/crowdsec/data
+      - crowdsec-config:/etc/crowdsec
+      - caddy-logs:/logs:ro
+      - ./crowdsec-acquis.yaml:/etc/crowdsec/acquis.d/cpm.yaml:ro
+    networks:
+      # Not caddy-network, where an upstream could reach the LAPI. Not internal either: the hub and
+      # the online API are on the internet. The alias is unlikely to be taken by a user container,
+      # which, sharing a network with Caddy, would otherwise be sent the bouncer key.
+      crowdsec:
+        aliases:
+          - cpm-crowdsec
+    healthcheck:
+      test: ["CMD", "cscli", "lapi", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # The first start downloads the hub collections.
+      start_period: 120s
+
 networks:
   caddy-network:
     driver: bridge
@@ -439,6 +477,9 @@ networks:
   socket-proxy:
     driver: bridge
     internal: true
+  # Caddy and the managed crowdsec only. It has egress, which Caddy already has on caddy-network.
+  crowdsec:
+    driver: bridge
 
 volumes:
   caddy-manager-data:
@@ -447,5 +488,7 @@ volumes:
   caddy-config:
   caddy-logs:
   clickhouse-data:
+  crowdsec-data:
+  crowdsec-config:
   postgres-data:
   acme-ca:
