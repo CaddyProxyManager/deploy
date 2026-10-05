@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.0.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.1.0
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -73,6 +73,9 @@ services:
       # Users without an icon fall back to Gravatar, which their browser fetches directly.
       # Set false to disable it and lock the Settings toggle.
       AVATAR_GRAVATAR: ${AVATAR_GRAVATAR:-true}
+
+      # Simulate Caddy and the agent instead of configuring anything. See .env.example.
+      DEMO_MODE: ${DEMO_MODE:-false}
 
       # Optional. Compose always sets these, to the empty string when .env names neither; the app
       # trims and reads blank as absent, which means first-run setup creates the administrator in
@@ -188,7 +191,7 @@ services:
 
   caddy:
     container_name: caddy-proxy-manager-caddy
-    image: ghcr.io/silentspud/caddy-proxy-manager/caddy:3.0.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/caddy:3.1.0
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -292,7 +295,7 @@ services:
   # L4 port changes and Caddy module selection.
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.0.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.1.0
     build:
       context: .
       dockerfile: docker/agent/Dockerfile
