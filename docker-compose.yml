@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.2.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.3.0
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -25,6 +25,9 @@ services:
       # Pinned as admin.listen into a config loaded with no agent in between, as the agent pins every
       # config it forwards. Must match caddy's CADDY_ADMIN_LISTEN.
       CADDY_ADMIN_LISTEN: caddy-admin:2019
+      # Re-apply this controller's config to a Caddy that drifted from it. A Settings field; this is
+      # the first-start default. Off only on a controller sharing a Caddy it does not own.
+      CADDY_MONITOR_ENABLED: ${CADDY_MONITOR_ENABLED:-true}
 
       # Where generated certificates are written. Defaults to <workdir>/data/certs.
       CERTS_DIRECTORY: ${CERTS_DIRECTORY:-}
@@ -32,10 +35,10 @@ services:
       # Public URL this instance is reached at.
       BASE_URL: ${BASE_URL:-http://localhost:3000}
 
-      # PostgreSQL only. Passed as discrete fields rather than folded into a URL: the password
-      # arrives here by interpolation and nothing encodes it, so a `/` in it used to end the URL's
-      # authority early and the app would try to connect to a host nobody configured. As fields
-      # there is no delimiter to collide with, and any password works as typed.
+      # PostgreSQL, unless DATABASE_URL names a SQLite file. Passed as discrete fields rather than
+      # folded into a URL: the password arrives here by interpolation and nothing encodes it, so a
+      # `/` in it used to end the URL's authority early and the app would try to connect to a host
+      # nobody configured. As fields there is no delimiter to collide with.
       # Defaulted, not hard-coded: the bundled `postgres` service is what these point at when the
       # operator sets nothing, and overriding them is how you point the app at a server of your
       # own. Hard-coding the host and port would have left DATABASE_URL as the only way to do that,
@@ -51,8 +54,8 @@ services:
 
       # Overrides all of the above when set, for a server that needs something a URL can say and
       # the fields cannot - an sslmode, a search_path, a connection option. Remember that a
-      # password inside a URL has to be percent-encoded. An existing SQLite file is migrated
-      # through the in-app migration flow, not by pointing this at it.
+      # password inside a URL has to be percent-encoded. `file:/app/data/cpm.db` uses SQLite
+      # instead. A pre-3.0 SQLite file is migrated through the in-app flow, not by pointing this at it.
       DATABASE_URL: ${DATABASE_URL:-}
 
       # Connections the database pool may open. The real default, not `${VAR:-}`: it is read as
@@ -131,6 +134,7 @@ services:
       OAUTH_ADMIN_GROUP: ${OAUTH_ADMIN_GROUP:-}
       OAUTH_USER_GROUP: ${OAUTH_USER_GROUP:-}
       OAUTH_VIEWER_GROUP: ${OAUTH_VIEWER_GROUP:-}
+      OAUTH_OPERATOR_GROUP: ${OAUTH_OPERATOR_GROUP:-}
       OAUTH_DEFAULT_ROLE: ${OAUTH_DEFAULT_ROLE:-}
       OAUTH_SYNC_GROUPS: ${OAUTH_SYNC_GROUPS:-false}
 
@@ -159,6 +163,15 @@ services:
       GEOIPUPDATE_LICENSE_KEY: ${GEOIPUPDATE_LICENSE_KEY:-}
       # Hours between checks for newer databases. A Settings field; this is a first-start default.
       GEOIP_UPDATE_INTERVAL_HOURS: ${GEOIP_UPDATE_INTERVAL_HOURS:-24}
+
+      # Settings fields with a first-start default here, like the ones above.
+      FORWARD_AUTH_INTERNAL_URL: ${FORWARD_AUTH_INTERNAL_URL:-}
+      CADDY_BUILD_TIMEOUT: "${CADDY_BUILD_TIMEOUT:-1800}"
+      # Variables that override a stored value, for getting back into a locked-out instance.
+      SETTINGS_ENV_OVERRIDE: ${SETTINGS_ENV_OVERRIDE:-}
+      # Pre-3.0 migration: which database the setup flow offers, and when legacy-key secrets expire.
+      LEGACY_SQLITE_PATH: ${LEGACY_SQLITE_PATH:-}
+      LEGACY_KEY_CUTOFF_DATE: ${LEGACY_KEY_CUTOFF_DATE:-}
     group_add:
       - "${CADDY_GID:-10000}"  # caddy's GID, so web can write /logs
     volumes:
@@ -191,7 +204,7 @@ services:
 
   caddy:
     container_name: caddy-proxy-manager-caddy
-    image: ghcr.io/silentspud/caddy-proxy-manager/caddy:3.2.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/caddy:3.3.0
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -296,7 +309,7 @@ services:
   # L4 port changes and Caddy module selection.
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.2.1
+    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.3.0
     # The agent stops Caddy before it exits, and allows that 40 seconds; Docker's default of 10
     # would kill it part-way through.
     stop_grace_period: 1m
@@ -376,9 +389,10 @@ services:
       # Egress, for a controller on another host.
       - caddy-network
 
-  # The controller's database. No profile: unlike clickhouse this is not optional,
-  # since SQLite support was removed. Unpublished on purpose - nothing outside the compose network
-  # needs it, and publishing 5432 is how a database ends up on the internet.
+  # The controller's database. No profile, so it runs even when DATABASE_URL picks SQLite: the
+  # default stack should not depend on a variable to have a database. Unpublished on purpose -
+  # nothing outside the compose network needs it, and publishing 5432 is how a database ends up on
+  # the internet.
   postgres:
     container_name: caddy-proxy-manager-postgres
     image: postgres:18-alpine@sha256:6c538e7206ea40ff740ef27883529390a690b6ead6ba96b44c67a9f7c638e8fd
