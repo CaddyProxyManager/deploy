@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.0.0
+    image: ghcr.io/silentspud/caddy-proxy-manager/web:3.0.1
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -188,7 +188,7 @@ services:
 
   caddy:
     container_name: caddy-proxy-manager-caddy
-    image: ghcr.io/silentspud/caddy-proxy-manager/caddy:3.0.0
+    image: ghcr.io/silentspud/caddy-proxy-manager/caddy:3.0.1
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -292,7 +292,7 @@ services:
   # L4 port changes and Caddy module selection.
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.0.0
+    image: ghcr.io/silentspud/caddy-proxy-manager/agent:3.0.1
     build:
       context: .
       dockerfile: docker/agent/Dockerfile
