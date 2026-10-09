@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/caddyproxymanager/web:3.7.5-beta.1
+    image: ghcr.io/caddyproxymanager/web:3.7.5-beta.2
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -134,6 +134,7 @@ services:
 
       # First-start defaults of Settings fields. A fork sets the repository to its own namespace.
       UPDATE_CHECK_ENABLED: ${UPDATE_CHECK_ENABLED:-}
+      UPDATE_CHECK_PRERELEASES: ${UPDATE_CHECK_PRERELEASES:-}
       UPDATE_IMAGE_REPOSITORY: ${UPDATE_IMAGE_REPOSITORY:-}
       OFFLINE_MODE: ${OFFLINE_MODE:-}
       HOST_HISTORY_KEEP_REVISIONS: ${HOST_HISTORY_KEEP_REVISIONS:-}
@@ -232,7 +233,7 @@ services:
   caddy:
     container_name: caddy-proxy-manager-caddy
     # An image you build yourself, with the agent's CADDY_BUILD_MODE=external. See the README.
-    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:3.7.5-beta.1}
+    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:3.7.5-beta.2}
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -324,7 +325,7 @@ services:
 
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/caddyproxymanager/agent:3.7.5-beta.1
+    image: ghcr.io/caddyproxymanager/agent:3.7.5-beta.2
     # It allows stopping Caddy 40s on exit; Docker's default 10s would kill it part-way.
     stop_grace_period: 1m
     build:
