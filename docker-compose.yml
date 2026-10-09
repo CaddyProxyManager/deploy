@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/caddyproxymanager/web:3.7.5
+    image: ghcr.io/caddyproxymanager/web:3.7.6
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -233,7 +233,7 @@ services:
   caddy:
     container_name: caddy-proxy-manager-caddy
     # An image you build yourself, with the agent's CADDY_BUILD_MODE=external. See the README.
-    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:3.7.5}
+    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:3.7.6}
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -325,7 +325,7 @@ services:
 
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/caddyproxymanager/agent:3.7.5
+    image: ghcr.io/caddyproxymanager/agent:3.7.6
     # It allows stopping Caddy 40s on exit; Docker's default 10s would kill it part-way.
     stop_grace_period: 1m
     build:
@@ -358,6 +358,9 @@ services:
       SERVICE_START_TIMEOUT: "${SERVICE_START_TIMEOUT:-900}"
       # A host directory certificates may be read from, as the daemon sees it; unset is off.
       CERT_FILES_HOST_DIR: ${CERT_FILES_HOST_DIR:-}
+      # The files your own compose reads, so a recreate keeps an override kept elsewhere.
+      COMPOSE_FILE: ${COMPOSE_FILE:-}
+      COMPOSE_PATH_SEPARATOR: ${COMPOSE_PATH_SEPARATOR:-}
       DOCKER_HOST: tcp://docker-socket-proxy:2375
       # The agent never reads .env (it holds the secrets), so what caddy and clickhouse
       # interpolate, including from an override file, is forwarded here.
