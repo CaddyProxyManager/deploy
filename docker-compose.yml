@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/caddyproxymanager/web:4.0.0-rc.5
+    image: ghcr.io/caddyproxymanager/web:4.0.0-rc.6
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -40,10 +40,16 @@ services:
 
       # Fields, not a URL: the interpolated password is never encoded, so a `/` in it would end the
       # URL's authority early. Defaulted to the bundled service; override to use your own server.
+      POSTGRES_HOST: ${POSTGRES_HOST:?ERROR - POSTGRES_HOST must name an external PostgreSQL server}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-cpm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ERROR - POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-cpm}
+      POSTGRES_SSL: ${POSTGRES_SSL:-}
 
       # Overrides the fields, for options only a URL can say; percent-encode its password.
       # `file:/app/data/cpm.db` is SQLite. A pre-3.0 file is migrated in-app, not pointed at here.
-      DATABASE_URL: ${DATABASE_URL:?ERROR - DATABASE_URL must be an external PostgreSQL URL}
+      DATABASE_URL: ${DATABASE_URL:-}
 
       # The real default, not `${VAR:-}`: Number("") is 0.
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
@@ -228,7 +234,7 @@ services:
   caddy:
     container_name: caddy-proxy-manager-caddy
     # An image you build yourself, with the agent's CADDY_BUILD_MODE=external. See the README.
-    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:4.0.0-rc.5}
+    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:4.0.0-rc.6}
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -331,7 +337,7 @@ services:
 
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/caddyproxymanager/agent:4.0.0-rc.5
+    image: ghcr.io/caddyproxymanager/agent:4.0.0-rc.6
     # It allows stopping Caddy 40s on exit; Docker's default 10s would kill it part-way.
     stop_grace_period: 1m
     build:
