@@ -1,7 +1,7 @@
 services:
   web:
     container_name: caddy-proxy-manager-web
-    image: ghcr.io/caddyproxymanager/web:4.0.0-rc.6
+    image: ghcr.io/caddyproxymanager/web:4.0.0-rc.7
     build:
       context: .
       dockerfile: docker/web/Dockerfile
@@ -234,7 +234,7 @@ services:
   caddy:
     container_name: caddy-proxy-manager-caddy
     # An image you build yourself, with the agent's CADDY_BUILD_MODE=external. See the README.
-    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:4.0.0-rc.6}
+    image: ${CADDY_IMAGE:-ghcr.io/caddyproxymanager/caddy:4.0.0-rc.7}
     build:
       context: .
       dockerfile: docker/caddy/Dockerfile
@@ -337,7 +337,7 @@ services:
 
   agent:
     container_name: caddy-proxy-manager-agent
-    image: ghcr.io/caddyproxymanager/agent:4.0.0-rc.6
+    image: ghcr.io/caddyproxymanager/agent:4.0.0-rc.7
     # It allows stopping Caddy 40s on exit; Docker's default 10s would kill it part-way.
     stop_grace_period: 1m
     build:
@@ -422,7 +422,7 @@ services:
   # purpose: publishing 5432 is how a database ends up on the internet.
   clickhouse:
     container_name: caddy-proxy-manager-clickhouse
-    image: clickhouse/clickhouse-server:26.9.12.8-alpine@sha256:d94d23b5cf0a0a0433a1b5b909f8900bf126783e8c3c7b806add464cc0604794
+    image: clickhouse/clickhouse-server:26.9.24.8-alpine@sha256:a5a7ba1d334ba323b3353ec002f00c337f140e4dacd4ba1f248822048bb7830a
     profiles: [clickhouse]
     restart: unless-stopped
     environment:
